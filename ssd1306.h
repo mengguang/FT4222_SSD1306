@@ -29,9 +29,6 @@
 #define SSD1306_WIDTH           128
 #endif
 
-// some LEDs don't display anything in first two columns
-// #define SSD1306_WIDTH           130
-
 // Enumeration for screen colors
 typedef enum {
 	Black = 0x00, // Black color, no pixel

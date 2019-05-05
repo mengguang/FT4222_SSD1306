@@ -1,5 +1,6 @@
 #include "ssd1306.h"
 #include "stdbool.h"
+
 extern FT_HANDLE ftHandle;
 
 void ssd1306_Reset(void) {
@@ -11,7 +12,7 @@ static uint8_t i2c_buffer[256];
 static inline bool wait_i2c_idle() {
     uint8_t cStatus = 0;
     uint32_t max_wait_ms = 1000;
-    while(max_wait_ms > 0) {
+    while (max_wait_ms > 0) {
         FT_STATUS ftStatus = FT4222_I2CMaster_GetStatus(ftHandle, &cStatus);
         if ((ftStatus != 0x20) && (ftStatus != 0x00)) {
             HAL_Delay(2);
@@ -20,7 +21,7 @@ static inline bool wait_i2c_idle() {
             return true;
         }
     }
-    printf("cStatus: %d\n",cStatus);
+    printf("cStatus: %d\n", cStatus);
     return false;
 }
 
@@ -106,7 +107,12 @@ void ssd1306_Init(void) {
 #endif
 
     ssd1306_WriteCommand(0xA8); //--set multiplex ratio(1 to 64) - CHECK
-    ssd1306_WriteCommand(0x1F); //
+    if (SSD1306_HEIGHT == 32) {
+        ssd1306_WriteCommand(0x1F);
+    } else {
+        ssd1306_WriteCommand(0x3F);
+    }
+
 
     ssd1306_WriteCommand(0xA4); //0xa4,Output follows RAM content;0xa5,Output ignores RAM content
 
@@ -120,7 +126,12 @@ void ssd1306_Init(void) {
     ssd1306_WriteCommand(0x22); //
 
     ssd1306_WriteCommand(0xDA); //--set com pins hardware configuration - CHECK
-    ssd1306_WriteCommand(0x02);
+    if (SSD1306_HEIGHT == 32) {
+        ssd1306_WriteCommand(0x02);
+    } else {
+        ssd1306_WriteCommand(0x12);
+    }
+
 
     ssd1306_WriteCommand(0xDB); //--set vcomh
     ssd1306_WriteCommand(0x20); //0x20,0.77xVcc
@@ -155,7 +166,7 @@ void ssd1306_Fill(SSD1306_COLOR color) {
 // Write the screenbuffer with changed to the screen
 void ssd1306_UpdateScreen(void) {
     uint8_t i;
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < (SSD1306_HEIGHT / 8); i++) {
         ssd1306_WriteCommand(0xB0 + i);
         ssd1306_WriteCommand(0x00);
         ssd1306_WriteCommand(0x10);
@@ -168,6 +179,9 @@ void ssd1306_UpdateScreen(void) {
 //    Y => Y Coordinate
 //    color => Pixel color
 void ssd1306_DrawPixel(uint8_t x, uint8_t y, SSD1306_COLOR color) {
+    if (SSD1306_WIDTH == 132) {
+        x += 2;
+    }
     if (x >= SSD1306_WIDTH || y >= SSD1306_HEIGHT) {
         // Don't write outside the buffer
         return;

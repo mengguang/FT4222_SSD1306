@@ -126,7 +126,7 @@ int main()
 
     uint8_t led_value = 1;
 
-    // ssd1306_Init();
+    ssd1306_Init();
     for (int i = 0; i < 1000; i++)
     {
         printf("testing %d\n", i);

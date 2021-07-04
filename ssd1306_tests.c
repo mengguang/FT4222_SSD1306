@@ -79,7 +79,7 @@ void ssd1306_TestFPS()
     ssd1306_SetCursor(2, 0);
     ssd1306_WriteString(buff, Font_11x18, White);
     ssd1306_UpdateScreen();
-    HAL_Delay(2000);
+    HAL_Delay(1000);
 }
 
 void ssd1306_TestAll()

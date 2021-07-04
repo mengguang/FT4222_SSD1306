@@ -8,7 +8,8 @@
 FT_DEVICE_LIST_INFO_NODE g_FT4222DevList[8];
 uint32_t ndev = 0;
 
-FT_HANDLE ftHandle = NULL;
+FT_HANDLE ftHandleI2C = NULL;
+FT_HANDLE ftHandleGPIO = NULL;
 
 void ListFtUsbDevices()
 {
@@ -35,12 +36,8 @@ void ListFtUsbDevices()
 
         if (FT_OK == ftStatus)
         {
-            const char *desc = devInfo.Description;
-            if ((strcmp(desc, "FT4222") == 0) || (strcmp(desc, "FT4222 A") == 0))
-            {
-                g_FT4222DevList[ndev] = devInfo;
-                ndev++;
-            }
+            g_FT4222DevList[ndev] = devInfo;
+            ndev++;
         }
     }
 }
@@ -75,47 +72,77 @@ int main()
         printf("No FT4222 device is found!\n");
         return 0;
     }
-    const FT_DEVICE_LIST_INFO_NODE devInfo = g_FT4222DevList[0];
 
-    printf("Open Device\n");
-    printf("  Flags = 0x%lx, (%s)\n", devInfo.Flags, DeviceFlagToString(devInfo.Flags));
-    printf("  Type = 0x%lx\n", devInfo.Type);
-    printf("  ID = 0x%lx\n", devInfo.ID);
-    printf("  LocId = 0x%lx\n", devInfo.LocId);
-    printf("  SerialNumber = %s\n", devInfo.SerialNumber);
-    printf("  Description = %s\n", devInfo.Description);
-    printf("  ftHandle = 0x%p\n", devInfo.ftHandle);
+    for (uint32_t i = 0; i < ndev; i++)
+    {
+        const FT_DEVICE_LIST_INFO_NODE devInfo = g_FT4222DevList[i];
+
+        printf("Open Device\n");
+        printf("  Flags = 0x%lx, (%s)\n", devInfo.Flags, DeviceFlagToString(devInfo.Flags));
+        printf("  Type = 0x%lx\n", devInfo.Type);
+        printf("  ID = 0x%lx\n", devInfo.ID);
+        printf("  LocId = 0x%lx\n", devInfo.LocId);
+        printf("  SerialNumber = %s\n", devInfo.SerialNumber);
+        printf("  Description = %s\n", devInfo.Description);
+        printf("  ftHandle = 0x%p\n", devInfo.ftHandle);
+    }
 
     FT_STATUS ftStatus;
-    ftStatus = FT_OpenEx((PVOID)((int64_t)(devInfo.LocId)), FT_OPEN_BY_LOCATION, &ftHandle);
-    //ftStatus = FT_Open(0, &ftHandle);
+    ftStatus = FT_OpenEx("FT4222 A", FT_OPEN_BY_DESCRIPTION, &ftHandleI2C);
     if (FT_OK != ftStatus)
     {
-        printf("Open a FT4222 device failed!\n");
+        printf("Open a FT4222 device for I2C failed!\n");
+        return 0;
+    }
+    ftStatus = FT_OpenEx("FT4222 B", FT_OPEN_BY_DESCRIPTION, &ftHandleGPIO);
+    if (FT_OK != ftStatus)
+    {
+        printf("Open a FT4222 device for GPIO failed!\n");
         return 0;
     }
 
     printf("\n\n");
     printf("Init FT4222 as I2C master\n");
-    ftStatus = FT4222_I2CMaster_Init(ftHandle, 1000);
+    ftStatus = FT4222_I2CMaster_Init(ftHandleI2C, 1000);
     if (FT_OK != ftStatus)
     {
         printf("Init FT4222 as I2C master device failed!\n");
         return 0;
     }
-    FT4222_I2CMaster_Reset(ftHandle);
+    // FT4222_I2CMaster_Reset(ftHandleI2C);
 
-    ssd1306_Init();
+    //disable suspend out , enable gpio 2
+    FT4222_SetSuspendOut(ftHandleGPIO, FALSE);
+    //disable interrupt , enable gpio 3
+    FT4222_SetWakeUpInterrupt(ftHandleGPIO, FALSE);
+    FT4222_STATUS ft4222Status;
+    GPIO_Dir gpio_dir[4] = {GPIO_INPUT, GPIO_INPUT, GPIO_OUTPUT, GPIO_OUTPUT};
+    ft4222Status = FT4222_GPIO_Init(ftHandleGPIO, gpio_dir);
+    if (FT4222_OK != ft4222Status)
+    {
+        printf("FT4222_GPIO_Init failed!\n");
+        return 0;
+    }
+
+    uint8_t led_value = 1;
+
+    // ssd1306_Init();
     for (int i = 0; i < 1000; i++)
     {
         printf("testing %d\n", i);
+        FT4222_GPIO_Write(ftHandleGPIO, GPIO_PORT2, led_value);
+        FT4222_GPIO_Write(ftHandleGPIO, GPIO_PORT3, 1 - led_value);
+        led_value = 1 - led_value;
+        HAL_Delay(200);
         ssd1306_TestAll();
     }
 
     printf("UnInitialize FT4222\n");
-    FT4222_UnInitialize(ftHandle);
+    FT4222_UnInitialize(ftHandleGPIO);
+    FT4222_UnInitialize(ftHandleI2C);
 
     printf("Close FT device\n");
-    FT_Close(ftHandle);
+    FT_Close(ftHandleGPIO);
+    FT_Close(ftHandleI2C);
     return 0;
 }

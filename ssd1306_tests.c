@@ -72,7 +72,7 @@ void ssd1306_TestFPS()
     HAL_Delay(100);
 
     char buff[64];
-    fps = (float)fps / ((end - start) / 1000.0);
+    fps = fps / ((end - start) / 1000);
     snprintf(buff, sizeof(buff), "~%d FPS", fps);
 
     ssd1306_Fill(Black);

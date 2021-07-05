@@ -64,6 +64,14 @@ char *DeviceFlagToString(DWORD flags)
     return desc;
 }
 
+void print_version(FT_HANDLE ftHandle)
+{
+    struct FT4222_Version version;
+    FT4222_STATUS s = FT4222_GetVersion(ftHandle, &version);
+    printf("chipVersion: %08X\n", version.chipVersion);
+    printf("libraryVersion: %08X\n", version.dllVersion);
+}
+
 int main()
 {
     ListFtUsbDevices();
@@ -94,13 +102,14 @@ int main()
         printf("Open a FT4222 device for I2C failed!\n");
         return 0;
     }
+    print_version(ftHandleI2C);
     ftStatus = FT_OpenEx("FT4222 B", FT_OPEN_BY_DESCRIPTION, &ftHandleGPIO);
     if (FT_OK != ftStatus)
     {
         printf("Open a FT4222 device for GPIO failed!\n");
         return 0;
     }
-
+    // print_version(ftHandleGPIO);
     printf("\n\n");
     printf("Init FT4222 as I2C master\n");
     ftStatus = FT4222_I2CMaster_Init(ftHandleI2C, 1000);
